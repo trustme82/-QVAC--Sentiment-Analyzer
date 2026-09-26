@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QVAC Sentiment Analyzer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, #f0e6ff 0%, #dcc9ff 100%);
+    font-family: system-ui, sans-serif;
+    color: #3f1e5c;
+    display: flex;
+    justify-content: center;
+    padding: 46px 20px;
+  }
+  .wrap { width: 100%; max-width: 600px; text-align: center; }
+  .tie { font-size: 2rem; margin-bottom: 4px; }
+  h1 { font-size: 1.6rem; margin: 0 0 6px; color: #3f1fa8; font-weight: 800; }
+  .subtitle { color: #604585; margin-bottom: 24px; font-size: 0.9rem; }
+  .card {
+    background: #faf7ff;
+    border: 3px dashed #6b3fd9;
+    border-radius: 20px;
+    padding: 30px 26px;
+    text-align: left;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 2px solid #6b3fd9;
+    background: #fff;
+    color: #3f1e5c;
+    font-family: inherit;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    resize: vertical;
+  }
+  .btn-row { text-align: center; }
+  button.action {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    background: #6b3fd9;
+    color: #fff;
+    box-shadow: 0 5px 0 #3f1fa8;
+  }
+  button.action:active { transform: translateY(3px); box-shadow: 0 2px 0 #3f1fa8; }
+  button.action:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { margin-top: 14px; font-size: 0.85rem; color: #604585; min-height: 1.2em; text-align: center; }
+  .result-box { margin-top: 20px; text-align: center; }
+  .badge {
+    display: inline-block;
+    padding: 8px 24px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .badge.positive { background: #2f9e5c; }
+  .badge.negative { background: #c0392b; }
+  .badge.neutral { background: #6b7280; }
+  .badge.mixed { background: #b8860b; }
+  .reason {
+    background: #fff;
+    border: 2px solid #d9c7ff;
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #3f1e5c;
+    text-align: left;
+  }
+  .footer-note { color: #604585; font-size: 0.78rem; margin-top: 20px; }
+  .spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid #e0d4f5;
+    border-top-color: #6b3fd9;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="tie">💬</div>
+    <h1>QVAC Sentiment Analyzer</h1>
+    <p class="subtitle">Paste any text and get its sentiment, with a plain-English reason.</p>
+
+    <div class="card">
+      <textarea id="mainInput" placeholder="e.g. I was so excited for this launch but the whole thing crashed within minutes and support never replied."></textarea>
+      <div class="btn-row">
+        <button class="action" id="generateBtn">Analyze Sentiment</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div id="resultBox" class="result-box"></div>
+    </div>
+
+    <p class="footer-note">Everything runs locally on your machine. No text ever leaves this device.</p>
+  </div>
+
+  <script>
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    const mainInput = document.getElementById('mainInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const status = document.getElementById('status');
+    const resultBox = document.getElementById('resultBox');
+
+    async function generate() {
+      const value = mainInput.value.trim();
+      if (!value) return;
+      generateBtn.disabled = true;
+      resultBox.innerHTML = '';
+      status.innerHTML = '<span class="spinner"></span>Reading the tone...';
+
+      try {
+        const res = await fetch('/api/sentiment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: value }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        status.textContent = '';
+        const cls = data.sentiment.toLowerCase();
+        resultBox.innerHTML = `
+          <div class="badge ${cls}">${escapeHtml(data.sentiment)}</div>
+          <div class="reason">${escapeHtml(data.reason)}</div>
+        `;
+      } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    generateBtn.addEventListener('click', generate);
+  </script>
+</body>
+</html>
